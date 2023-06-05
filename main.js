@@ -1,30 +1,45 @@
 const electron = require('electron')
 const path = require('path')
+const { exec } = require('child_process');
+
+
 
 const BrowserWindow = electron.BrowserWindow
 const app = electron.app
-
+app.commandLine.appendSwitch('ignore-certificate-errors');
+app.commandLine.appendSwitch('disable-web-security');
 app.on('ready', () => {
   createWindow()
 })
 
 var phpServer = require('node-php-server');
-const port = 8000, host = '127.0.0.1';
+const port = 9060, host = '127.0.0.1';
 const serverUrl = `http://${host}:${port}`;
 
 
 let mainWindow
 
 function createWindow() {
+
+  // Run a command for sql
+exec('cmd /c "C:/pos config/xampp/mysql_start.bat"', (error, stdout, stderr) => {
+  if (error) {
+    console.error(`Error executing command: ${error}`);
+    return;
+  }
+
+  console.log(`Command output: ${stdout}`);
+});
+
   // Create a PHP Server
   phpServer.createServer({
     port: port,
     hostname: host,
-    base: `${__dirname}/www/public`,
+    base: `${__dirname}/htdocs/public`,
     keepalive: false,
     open: false,
-    bin: `${__dirname}/php/php.exe`,
-    router: __dirname + '/www/server.php'
+    bin: `${__dirname}/php7/php.exe`,
+    router: __dirname + '/htdocs/public/index.php'
   });
 
   // Create the browser window.
@@ -33,13 +48,12 @@ function createWindow() {
     height
   } = electron.screen.getPrimaryDisplay().workAreaSize
   mainWindow = new BrowserWindow({
-    width: width,
-    height: height,
-    show: false,
+    width: 1000,
+    height: 800,
     autoHideMenuBar: true
   })
 
-  mainWindow.loadURL(serverUrl)
+  mainWindow.loadURL(`http://localhost:${port}`)
 
   mainWindow.webContents.once('dom-ready', function () {
     mainWindow.show()
@@ -51,10 +65,19 @@ function createWindow() {
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {
-    phpServer.close();
+    // phpServer.close();
     mainWindow = null;
   })
 }
+
+app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  console.log('error')
+  // Prevent having error
+  event.preventDefault()
+  // and continue
+  callback(true)
+
+})
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -79,3 +102,6 @@ app.on('activate', function () {
     createWindow()
   }
 })
+
+
+
